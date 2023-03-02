@@ -1,5 +1,5 @@
 import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
-import React, { Component } from "react";
+import React, { useEffect,useState } from "react";
 import Newsitems from "./Newsitems";
 import axios from "axios";
 import Spinner from "./Spinner";
@@ -7,99 +7,85 @@ import propTypes  from "prop-types";
 import InfiniteScroll from "react-infinite-scroll-component";
 
 
-export class Dashboard extends Component {
-  
-  static defaultProps = {
-    country: 'in',
-    pageSize:10,
-    category:'general'
-  }
+const Dashboard = (props) =>{
+  const [articles , setarticles]= useState([])
+  const [loading , setloading]= useState(false)
+  const [page , setpage]= useState(1)
+  const [totalResults , settotalResults]= useState(0)
 
-  static propTypes = {
-    country : propTypes.string,
-    pageSize: propTypes.number,
-    category: propTypes.string
-  }
-
-  constructor(props) {
-    super(props);
-    this.state = {
-      articles:[],
-      loading: false,
-      page:1,
-      totalResults:0
-    };
-  }
-
-  async Update_news(){
-    this.setState({
-      loading: true
-    })
-    axios.get(`https://newsapi.org/v2/top-headlines?country=${this.props.country}&category=${this.props.category}&apiKey=344b8b1ab8274790b89e94f57c24a557&page=1&pageSize=${this.props.pageSize}`)
+  const Update_news = async()=>{
+    props.setProgress(10)
+    setloading(true)
+    await(axios.get(`https://newsapi.org/v2/top-headlines?country=${props.country}&category=${props.category}&apiKey=${props.apiKey}&page=1&pageSize=${props.pageSize}`)
     .then((response)=>{
-      this.setState({
-        articles: response.data.articles,
-        totalResults: response.data.totalResults,
-        loading: false})
-    }) 
+      setarticles(response.data.articles)
+      settotalResults(response.data.totalResults)
+      setloading(false)
+    }))
+    await(props.setProgress(60))
+    await(props.setProgress(100))
   }
   
-  async componentDidMount(){
-    this.Update_news()
+  useEffect(() => {
+    Update_news()
+  }, [])
+  
+
+  const handlePrevClick = async()=>{
+    setpage(page - 1)
+    Update_news()
   }
 
-  handlePrevClick = async()=>{
-    this.setState({ 
-      page: this.state.page - 1,
-    })
-    this.Update_news()
-  }
-
-  handleNextClick = async()=>{
+  const handleNextClick = async()=>{
     // if(this.state.page + 1 > Math.ceil(this.state.totalResults/this.props.pageSize)){
-      this.setState({ 
-        page: this.state.page + 1,
-      })
-      this.Update_news()
-      
+      setpage(page + 1)
+      Update_news()
     }
 
-    fetchMoreData = async() => {
-      // this.setState({
-      //   loading: true
-      // })
-      axios.get(`https://newsapi.org/v2/top-headlines?country=${this.props.country}&category=${this.props.category}&apiKey=344b8b1ab8274790b89e94f57c24a557&page=${this.state.page}&pageSize=${this.props.pageSize}`)
+  const  fetchMoreData = async() => {
+      props.setProgress(10)
+      await(axios.get(`https://newsapi.org/v2/top-headlines?country=${props.country}&category=${props.category}&apiKey=${props.apiKey}&page=${page+1}&pageSize=${props.pageSize}`)
       .then((response)=>{
-        this.setState({
-          articles: this.state.articles.concat(response.data.articles),
-          totalResults: response.data.totalResults,
-          loading: false,
-          page:this.state.page + 1
-        })
-      }) 
-    }
+        setarticles(articles.concat(response.data.articles))
+        settotalResults(response.data.totalResults)
+        setloading(false)
+        setpage(page+1)
+      }))
+      await(props.setProgress(60))
+      await(props.setProgress(100))
 
-  render() {
+    }
     return (
       <>
-        <header className="bg-[#301E67]">
+        <header className="bg-[#301E67] sticky top-16 z-10">
           <div className="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
             <h1 className="text-3xl font-bold tracking-tight text-white">
               News-Monkey Top headlines
             </h1>
           </div>
         </header>
+        {/* option for selecting the country */}
+        {/* <div className="bg-[#ECECEC] mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
+        <div className="relative w-full lg:max-w-sm">
+            <select className="w-full p-2.5 text-gray-500 bg-white border rounded-md shadow-sm outline-none appearance-none focus:border-indigo-600">
+                <option>ReactJS Dropdown</option>
+                <option>Laravel 9 with React</option>
+                <option>React with Tailwind CSS</option>
+                <option>React With Headless UI</option>
+            </select>
+        </div>
+        </div> */}
         <div className="flex justify-center bg-[#ECECEC] mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
-          {this.state.loading && <Spinner/>}
+          {loading && <Spinner/>}
         </div>
         <InfiniteScroll
-          dataLength={this.state.articles.length}
-          next={this.fetchMoreData}
-          hasMore={this.state.articles.length !== this.state.totalResults}
+          dataLength={articles.length}
+          next={fetchMoreData}
+          hasMore={articles.length !== totalResults}
           loader={<Spinner/>}
         >
           <div className="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8 bg-[#ECECEC] flex-auto grid grid-cols-3 gap-5 md:max-lg:grid-cols-2 gap-2 max-md:grid-cols-1 gap-3">
-          {!this.state.loading && this.state.articles.map((element)=>{
+          {!loading && articles.map((element)=>{
             return <Newsitems
             key={element.url}
             title={element.title?element.title:""}
@@ -120,7 +106,18 @@ export class Dashboard extends Component {
         </div> */}
       </>
     );
-  }
+}
+
+Dashboard.defaultProps = {
+  country: 'in',
+  pageSize:10,
+  category:'general'
+}
+
+Dashboard.propTypes = {
+  country : propTypes.string,
+  pageSize: propTypes.number,
+  category: propTypes.string
 }
 
 export default Dashboard;
